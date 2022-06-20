@@ -1,0 +1,13 @@
+targets:
+  $default:
+    builders:
+      cloud_basic_gen|dbSchema_builder:
+        enabled: true
+
+builders:
+  dbSchema_builder:
+    import: 'package:eyflutter_gen/builder.dart'
+    builder_factories: [ 'dbSchemaBuilder' ]
+    build_extensions: { '.dart': [ '.db.dart' ] }
+    auto_apply: root_package
+    build_to: source
