@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:collection';
 
 import 'package:eyflutter_gen/enums/db_operation_type.dart';
@@ -5,12 +6,15 @@ import 'package:eyflutter_gen/events/i_data_entry.dart';
 import 'package:eyflutter_gen/events/i_data_factory.dart';
 import 'package:eyflutter_gen/sql_where_builder.dart';
 import 'package:flutter/services.dart';
+import 'package:isolate/isolate.dart';
 
 class DataFactory implements IDataFactory {
   final String _dbAction = "cabc4e3d3aca4fd394c0b2d18c1c1d3a";
   final String _dataKey = "data";
   final String _operationTypeKey = "operationType";
   final String _whereKey = "where";
+
+  Future<LoadBalancer> loadBalancer = LoadBalancer.create(8, IsolateRunner.spawn);
 
   @override
   void onPrepareData<T>(DbOperationType operationType, T data, {required SqlWhereBuilder builder}) {
@@ -36,13 +40,22 @@ class DataFactory implements IDataFactory {
   }
 
   Future<R?> _handler<R, T>(DbOperationType operationType, String schema, String fields, SqlWhereBuilder builder,
-      {T? data}) {
+      {T? data}) async {
+    var balancer = await loadBalancer;
+    var params = _HandlerParams<T>(operationType, schema, fields, builder, data);
+    var retMap = await balancer.run<Map<String, dynamic>, _HandlerParams>(_handlerPrepare, params);
+    var _methodChannel = const OptionalMethodChannel("0eff8bd070f64d1890193686196f5a31");
+    return _methodChannel.invokeMethod<R>(_dbAction, retMap);
+  }
+
+  Map<String, dynamic> _handlerPrepare<T>(_HandlerParams<T> params) {
     Map<String, dynamic> map = HashMap<String, dynamic>();
-    map[_operationTypeKey] = operationType.name;
-    map[_whereKey] = builder.build;
+    map[_operationTypeKey] = params.operationType.name;
+    map[_whereKey] = params.builder.build;
+    var data = params.data;
     if (data == null) {
-      map["schema"] = schema;
-      map["fields"] = fields;
+      map["schema"] = params.schema;
+      map["fields"] = params.fields;
     } else {
       if (data is IDataEntry) {
         map[_dataKey] = data.toJsonMap();
@@ -61,7 +74,16 @@ class DataFactory implements IDataFactory {
         }
       }
     }
-    var _methodChannel = const OptionalMethodChannel("0eff8bd070f64d1890193686196f5a31");
-    return _methodChannel.invokeMethod<R>(_dbAction, map);
+    return map;
   }
+}
+
+class _HandlerParams<T> {
+  final DbOperationType operationType;
+  final String schema;
+  final String fields;
+  final SqlWhereBuilder builder;
+  final T? data;
+
+  _HandlerParams(this.operationType, this.schema, this.fields, this.builder, this.data);
 }

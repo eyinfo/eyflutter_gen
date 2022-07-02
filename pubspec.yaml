@@ -1,7 +1,7 @@
 name: eyflutter_gen
-description: A new Flutter project.
+description: 数据库模型生成工具
 version: 0.0.1
-homepage:
+homepage: https://github.com/eyinfo/eyflutter_gen
 
 environment:
   sdk: ">=2.15.0 <3.0.0"
@@ -10,6 +10,7 @@ dependencies:
   flutter:
     sdk: flutter
   source_gen: ^1.0.0
+  isolate: ^2.1.1
 
 dev_dependencies:
   flutter_test:
